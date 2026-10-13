@@ -1,0 +1,13 @@
+{
+  "esm_dim": 1280,
+  "hidden": 384,
+  "pair_dim": 128,
+  "encoder_layers": 2,
+  "interaction_layers": 6,
+  "protein_slots": 16,
+  "peptide_slots": 8,
+  "contact_rank": 64,
+  "dropout": 0.1,
+  "distance_bins": 5,
+  "endpoints": ["pKd", "pKi", "pIC50_binding", "pIC50_functional", "pEC50"]
+}

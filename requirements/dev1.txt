@@ -1,0 +1,8 @@
+# Fresh Python 3.10 environment; install torch using the cu121 wheel index.
+torch==2.5.1
+numpy==1.26.4
+scipy==1.14.1
+rdkit==2024.9.6
+fair-esm==2.0.0
+pytest==8.3.5
+build==1.2.2.post1

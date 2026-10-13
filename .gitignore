@@ -1,0 +1,16 @@
+.venv/
+runtime/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+*.pt
+*.npz
+*.sqlite*
+.env
+*.pem
+*.key

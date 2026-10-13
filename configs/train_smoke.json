@@ -1,0 +1,7 @@
+{
+  "seed": 17, "epochs": 2, "max_steps": 4, "batch_size": 2, "pair_chunk": 2,
+  "lr": 0.001, "weight_decay": 0.0001, "gradient_clip": 1.0, "temperature": 0.1,
+  "patience": 3, "lr_patience": 2, "bf16": false, "allow_toy_features": true, "cpu_threads": 2,
+  "loss_weights": {"binding": 1.0, "contrastive": 0.2, "affinity": 1.0, "ranking": 0.1,
+                   "contact": 1.0, "interface": 1.0, "region": 0.5, "distance": 0.5}
+}

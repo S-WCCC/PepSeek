@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pepseek-unified"
+version = "0.1.1"
+description = "Sequence-deployable protein-peptide interaction backbone with masked multi-task supervision"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.2", "numpy>=1.24,<3", "scipy>=1.10", "rdkit>=2024.3"]
+
+[project.optional-dependencies]
+esm = ["fair-esm==2.0.0"]
+test = ["pytest>=8,<9", "build>=1.2"]
+
+[project.scripts]
+pepseek = "pepseek.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

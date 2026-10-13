@@ -1,0 +1,9 @@
+include README.md AGENTS.md pyproject.toml
+recursive-include configs *.json
+recursive-include docs *.md *.jsonl
+recursive-include scripts *.py *.sh
+recursive-include requirements *.txt *.lock
+recursive-include tests *.py
+prune runtime
+prune data
+prune .venv
