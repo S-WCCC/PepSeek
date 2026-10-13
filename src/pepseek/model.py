@@ -88,6 +88,7 @@ class ChainEncoder(nn.Module):
         n = mask.sum(1, keepdim=True)
         pos = torch.stack([idx / (n - 1).clamp_min(1), torch.exp(-idx / 4),
                            torch.exp(-(n - 1 - idx).clamp_min(0) / 4)], -1)
+        pos = batch.get('position_features',pos)
         x = self.esm(esm) + self.aa(batch["aa"]) + self.position(pos)
         edges = batch["edges"]
         if self.chemical:

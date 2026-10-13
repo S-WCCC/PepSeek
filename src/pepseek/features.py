@@ -16,9 +16,9 @@ from .io import digest, sha256
 AA = "ACDEFGHIKLMNPQRSTVWYX"
 
 
-def sequence(value, peptide=False):
+def sequence(value, peptide=False, allow_unknown=False):
     s = value.strip().upper()
-    allowed = AA[:-1] if peptide else AA + "UBZOJ"
+    allowed = (AA + "UBZOJ" if allow_unknown else AA[:-1]) if peptide else AA + "UBZOJ"
     if not s or any(c not in allowed for c in s):
         raise ValueError("Peptides require standard 20-AA sequences; proteins also allow X/U/O/B/Z/J. Supply explicit chemical identity for modifications.")
     return s
@@ -48,6 +48,7 @@ class FeatureStore:
 
     def key(self, entity, side):
         return digest({"side": side, "sequence": entity["sequence"],
+                       "components": entity.get("components"), "chemistry_mode": entity.get("chemistry_mode"),
                        "smiles": entity.get("smiles"), "atom_residue": entity.get("atom_residue"),
                        "config": self.config})
 
@@ -106,9 +107,9 @@ class SequenceFeatures:
             source = {"backend": "esm2", "checkpoint_sha256": sha256(checkpoint), "layer": self.layer, "dim": self.dim}
         self.config = {"schema": 1, **source, "window": window, "overlap": overlap,
                        "conformers": conformers, "seed": seed, "rdkit": rdBase.rdkitVersion,
-                       "chemistry": "explicit_smiles_with_atom_residue_or_linear_L_free_termini_v1",
+                       "chemistry": "explicit_smiles_or_declared_linear_or_explicit_unknown_mask_v2",
                        "protein_tokens": "ESM preserves U/O/B/Z; J maps to X; nonstandard graph AA maps to unknown",
-                       "protein_graph": "bidirectional_sequence_edges_v1"}
+                       "protein_graph": "component_separate_ESM_edges_and_positions_v2"}
 
     def embedding(self, seq):
         if hasattr(self, "table"):
@@ -127,18 +128,40 @@ class SequenceFeatures:
         return out / counts[:, None]
 
     def build(self, entity, side):
-        seq = sequence(entity["sequence"], peptide=side == "peptide")
+        unknown = entity.get("chemistry_mode") == "unknown"
+        seq = sequence(entity["sequence"], peptide=side == "peptide", allow_unknown=unknown)
         if seq != entity["sequence"]:
             raise ValueError("Normalize entity sequences before preparing features")
         n = len(seq)
-        a, b = np.arange(n - 1), np.arange(1, n)
-        arrays = {"esm": self.embedding(seq).astype(np.float32),
+        components = entity.get("components", [seq])
+        if not components or ''.join(components) != seq:
+            raise ValueError("Component sequences must concatenate exactly to tensor sequence")
+        aa, bb, positions, offset = [], [], [], 0
+        for component in components:
+            if not component: raise ValueError("Empty sequence component")
+            k = len(component); idx = np.arange(k)
+            aa.extend((np.arange(k-1)+offset).tolist()); bb.extend((np.arange(1,k)+offset).tolist())
+            positions.append(np.stack([idx/max(k-1,1), np.exp(-idx/4), np.exp(-(k-1-idx)/4)],-1))
+            offset += k
+        a, b = np.asarray(aa, np.int64), np.asarray(bb, np.int64)
+        arrays = {"esm": np.concatenate([self.embedding(s) for s in components]).astype(np.float32),
+                  "position_features": np.concatenate(positions).astype(np.float32),
                   "aa": np.array([AA.index(c) if c in AA else 20 for c in seq], np.int64),
                   "edges": np.array([np.r_[a, b], np.r_[b, a]], np.int64)}
         if side == "protein":
             return arrays
         if side != "peptide":
             raise ValueError("Unknown entity side")
+        if unknown:
+            if entity.get("smiles") or entity.get("atom_residue"):
+                raise ValueError("Unknown chemical identity cannot include a guessed graph")
+            arrays.update(atom_features=np.zeros((0,12),np.float32),atom_residue=np.zeros(0,np.int64),
+                          atom_edges=np.zeros((2,0),np.int64),atom_edge_weight=np.zeros(0,np.float32),
+                          conformer_coords=np.zeros((1,n,3),np.float32),geometry_mask=np.zeros((1,n),bool),
+                          conformer_mask=np.ones(1,bool))
+            return arrays
+        if len(components) != 1:
+            raise ValueError("Multicomponent peptide chemistry requires an explicit supported graph")
         mol = Chem.MolFromSmiles(entity["smiles"]) if entity.get("smiles") else Chem.MolFromFASTA(seq)
         if mol is None:
             raise ValueError(f"Cannot construct chemical identity for {entity['id']}")

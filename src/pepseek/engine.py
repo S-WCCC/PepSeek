@@ -49,13 +49,21 @@ def validate(model, dataset, rows, store, device, config):
     if not rows:
         raise ValueError("A nonempty external valid partition is required")
     model.eval()
+    expanded=[]
+    for r in rows:
+        views=r.get('structure_views',[])
+        if views:
+            expanded.extend(dict(r,structure_labels=v['path'],view_weight=1/len(views)) for v in views)
+        else:expanded.append(dict(r,view_weight=1.0))
+    rows=expanded
     total, n = 0., 0
     known = positive_pairs(dataset.split("train") + rows)
     for start in range(0, len(rows), config["batch_size"]):
         batch = rows[start:start + config["batch_size"]]
         loss, _, _ = batch_loss(model, dataset, batch, store, device, config, known, False)
-        total += float(loss) * len(batch)
-        n += len(batch)
+        weight=sum(r.get('view_weight',1.) for r in batch)
+        total += float(loss) * weight
+        n += weight
     return total / n
 
 
@@ -166,6 +174,7 @@ def train(manifest, feature_db, model_config, train_config, output, device="cpu"
             if rank == 0:
                 save_torch(out / "best.pt", checkpoint(-1))
         for epoch in range(start_epoch, config["epochs"]):
+            train_rows=dataset.training_rows(epoch,seed)
             # Epoch-based RNG yields deterministic epoch-boundary restart at fixed world size.
             torch.manual_seed(seed + epoch * world + rank)
             model.train()
@@ -273,21 +282,23 @@ def evaluate(manifest, features, checkpoint, output, split="test", device="cpu",
     if out.exists() and any(out.iterdir()):
         raise ValueError("Evaluation output must be empty")
     out.mkdir(parents=True, exist_ok=True)
-    rows = ds.split(split)
+    rows = ds.evaluation_rows(split)
     if not rows:
         raise ValueError("Empty evaluation partition")
     predictions, affinity_rows, structural = [], [], []
+    scored_pairs=set()
     for start in range(0, len(rows), batch_size):
         batch = rows[start:start + batch_size]
         lab = [ds.labels(r) for r in batch]
         inputs = collate(ds, batch, store, device)
         outputs = model(inputs, detail=any(lab), distance=any("distance_bins" in x for x in lab))
         for i, (r, labels) in enumerate(zip(batch, lab)):
-            predictions.append({"id": r["id"], "protein_id": r["protein_id"], "peptide_id": r["peptide_id"],
+            pair_id=r.get('pair_id',r['id']);first=pair_id not in scored_pairs;scored_pairs.add(pair_id)
+            if first:predictions.append({"id": pair_id, "protein_id": r["protein_id"], "peptide_id": r["peptide_id"],
                                 "binding": r.get("binding"), "score": float(outputs["score"][i])})
-            for a in r.get("affinity", []):
+            for a in r.get("affinity", []) if first else []:
                 j = model.cfg.endpoints.index(a["endpoint"])
-                affinity_rows.append({"id": r["id"], "endpoint": a["endpoint"], "lower": a.get("lower"),
+                affinity_rows.append({"id": pair_id, "endpoint": a["endpoint"], "lower": a.get("lower"),
                                       "upper": a.get("upper"), "prediction": float(outputs["affinity"][i, j])})
             arrays = {}
             for key, head in (("contact", "contact_logits"), ("protein_interface", "protein_interface_logits"), ("peptide_interface", "peptide_interface_logits")):
@@ -295,7 +306,7 @@ def evaluate(manifest, features, checkpoint, output, split="test", device="cpu",
                     shape = labels[key].shape
                     pred = outputs[head][i][tuple(slice(0, n) for n in shape)].float().cpu().numpy()
                     arrays[key + "_probability"] = 1 / (1 + np.exp(-np.clip(pred, -80, 80)))
-                    structural.append({"id": r["id"], "head": key, **binary_metrics(labels[key].ravel(), pred.ravel())})
+                    structural.append({"id": r["id"], "pair_id":pair_id,"view_weight":r.get('view_weight',1.),"head": key, **binary_metrics(labels[key].ravel(), pred.ravel())})
             if "distance_bins" in labels:
                 target = labels["distance_bins"]
                 logits = outputs["distance_log_probs"][i, :target.shape[0], :target.shape[1]].cpu().numpy()
@@ -306,19 +317,19 @@ def evaluate(manifest, features, checkpoint, output, split="test", device="cpu",
                     tp = ((prediction == label) & (target == label) & valid).sum()
                     denom = ((prediction == label) & valid).sum() + ((target == label) & valid).sum()
                     f1s.append(float(2 * tp / denom) if denom else 0.)
-                structural.append({"id": r["id"], "head": "distance", "n": int(valid.sum()),
+                structural.append({"id": r["id"], "pair_id":pair_id,"view_weight":r.get('view_weight',1.),"head": "distance", "n": int(valid.sum()),
                                    "accuracy": float((prediction[valid] == target[valid]).mean()) if valid.any() else None,
                                    "macro_f1": float(np.mean(f1s)) if valid.any() else None})
             if labels:
                 lp = len(ds.entities["protein"][r["protein_id"]]["sequence"])
                 arrays["region_probability"] = outputs["region_membership_logits"][i, :, :lp].sigmoid().cpu().numpy()
                 if "regions" in labels:
-                    structural.append({"id": r["id"], "head": "regions", **observed_region_metrics(arrays["region_probability"], labels["regions"])})
+                    structural.append({"id": r["id"], "pair_id":pair_id,"view_weight":r.get('view_weight',1.),"head": "regions", **observed_region_metrics(arrays["region_probability"], labels["regions"])})
             if arrays:
                 path = out / "structural_predictions" / (digest(r["id"]) + ".npz")
                 path.parent.mkdir(parents=True, exist_ok=True)
                 np.savez_compressed(path, **arrays)
-    result = {"split": split, "pairs": len(rows), "binding": binary_metrics(
+    result = {"split": split, "pairs": len(predictions), "structural_views_evaluated":len(rows),"binding": binary_metrics(
         [r["binding"] if r["binding"] is not None else np.nan for r in predictions], [r["score"] for r in predictions]), "affinity": {}}
     for endpoint in model.cfg.endpoints:
         exact = [r for r in affinity_rows if r["endpoint"] == endpoint and r["lower"] is not None and r["lower"] == r["upper"]]
@@ -330,7 +341,11 @@ def evaluate(manifest, features, checkpoint, output, split="test", device="cpu",
         for metric in ("auroc", "average_precision", "accuracy", "macro_f1", "matched_dice", "matched_iou"):
             values = [r[metric] for r in group if r.get(metric) is not None]
             if values:
-                summary[metric] = float(np.mean(values)); summary[metric + "_defined_complexes"] = len(values)
+                perpair={}
+                for r in group:
+                    if r.get(metric) is not None:perpair.setdefault(r.get('pair_id',r['id']),[]).append(r[metric])
+                summary[metric] = float(np.mean([np.mean(v) for v in perpair.values()])); summary[metric + "_defined_complexes"] = len(values)
+                summary[metric+'_defined_pairs']=len(perpair)
         result["structural_macro"][head] = summary
     write_csv(out / "pair_predictions.csv", predictions)
     write_csv(out / "affinity_predictions.csv", affinity_rows, ["id", "endpoint", "lower", "upper", "prediction"])

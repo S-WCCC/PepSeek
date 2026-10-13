@@ -44,10 +44,13 @@ def contrastive_loss(scores, positives, temperature=0.1):
 def multitask_loss(outputs, rows, labels, endpoints, weights=None):
     weights = weights or {}
     pieces = {k: [] for k in ("binding", "affinity", "ranking", "contact", "interface", "distance", "region")}
+    piece_weights={k:[] for k in pieces}
     device = outputs["score"].device
     for i, (r, lab) in enumerate(zip(rows, labels)):
+        before={k:len(v) for k,v in pieces.items()}
         if r.get("binding") is not None:
             pieces["binding"].append(F.binary_cross_entropy_with_logits(outputs["score"][i], outputs["score"].new_tensor(r["binding"])))
+        quantitative=[]
         for a in r.get("affinity", []):
             if a["endpoint"] not in endpoints:
                 raise ValueError(f"Unknown quantitative endpoint: {a['endpoint']}")
@@ -55,7 +58,8 @@ def multitask_loss(outputs, rows, labels, endpoints, weights=None):
             pred = outputs["affinity"][i, j]
             lower = pred.new_tensor(a["lower"] if a.get("lower") is not None else -torch.inf)
             upper = pred.new_tensor(a["upper"] if a.get("upper") is not None else torch.inf)
-            pieces["affinity"].append(interval_huber(pred, lower, upper))
+            quantitative.append(interval_huber(pred, lower, upper))
+        if quantitative:pieces['affinity'].append(torch.stack(quantitative).mean())
         for field, output, part in (("contact", "contact_logits", "contact"),
                                     ("protein_interface", "protein_interface_logits", "interface"),
                                     ("peptide_interface", "peptide_interface_logits", "interface")):
@@ -78,6 +82,7 @@ def multitask_loss(outputs, rows, labels, endpoints, weights=None):
             v = region_loss(outputs["region_membership_logits"][i, :, :target.shape[1]], target)
             if v is not None:
                 pieces["region"].append(v)
+        for k,v in pieces.items():piece_weights[k].extend([float(r.get('view_weight',1.))]*(len(v)-before[k]))
     # Only exact, same-endpoint, explicitly reliable experimental groups are ordered.
     groups = {}
     for i, r in enumerate(rows):
@@ -95,7 +100,12 @@ def multitask_loss(outputs, rows, labels, endpoints, weights=None):
                     pairs.append(F.softplus(-np.sign(yi - yk) * (outputs["affinity"][i, j] - outputs["affinity"][k, j]) / 0.5))
         if pairs:
             pieces["ranking"].append(torch.stack(pairs).mean())
-    terms = {k: torch.stack(v).mean() for k, v in pieces.items() if v}
+    terms={}
+    for k,v in pieces.items():
+        if v:
+            ws=piece_weights[k]+[1.]*(len(v)-len(piece_weights[k]))
+            wt=v[0].new_tensor(ws)
+            terms[k]=(torch.stack(v)*wt).sum()/wt.sum().clamp_min(1e-12)
     total = outputs["score"].sum() * 0
     for key, value in terms.items():
         total = total + weights.get(key, 1.0) * value

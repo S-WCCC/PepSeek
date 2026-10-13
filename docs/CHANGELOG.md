@@ -2,6 +2,21 @@
 
 Every source/config/schema change must add an entry including rationale, validation and scientific impact. Detailed command logs stay in runtime; this file stays readable and in Git.
 
+## 2026-10-13 — 0.2.0rc1 dual-supervision preparation
+
+- Added reproducible two-table curation, explicit chemical atom/residue mapping,
+  coordinate-derived masked labels, actual MMseqs2/BLAST searches and component
+  split construction. Data acceptance and the final release seal are pending.
+- Added explicit unknown-chemistry masks and separated multi-chain ESM/graph/
+  positional inputs. This changes the feature recipe; old feature caches remain
+  immutable and cannot be silently reused.
+- Added pair-level quantitative averaging and rotating structure views; validation
+  and evaluation retain all structural views and pair-macro summaries.
+- Stage-1 development-1 acceptance: 29 tests passed. Subsequent evaluation-view
+  changes require the final test/e2e receipt. No scientific training was launched.
+- Preserved the active conformer-benchmark checkout and all unrelated workloads;
+  curation code and data execute in separate versioned directories.
+
 ## 2026-10-13 — 0.1.1 human-proteome input compatibility
 
 - Added explicit protein U/O/B/Z/J token handling so selenoproteins are retained during canonical human-proteome preprocessing. The original sequence and cache identity remain intact; J-to-X tokenization and graph unknown-token mapping are recorded in the feature recipe.

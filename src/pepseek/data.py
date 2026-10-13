@@ -20,8 +20,10 @@ class Dataset:
             if len(set(ids)) != len(ids):
                 raise ValueError(f"Duplicate {side} entity IDs")
             for e in records:
-                if e["sequence"] != sequence(e["sequence"], side == "peptide"):
+                if e["sequence"] != sequence(e["sequence"], side == "peptide",e.get("chemistry_mode")=="unknown"):
                     raise ValueError("Sequences must be uppercase and whitespace-free")
+                if e.get("components") and ''.join(e['components']) != e['sequence']:
+                    raise ValueError("Component boundaries do not match sequence")
             self.entities[side] = {r["id"]: r for r in records}
         self.pairs = jsonl(relative_file(self.root, self.spec["pairs"]))
         self.validate()
@@ -37,7 +39,7 @@ class Dataset:
                 raise ValueError("Duplicate item ID or invalid split")
             seen.add(row["id"])
             p, q = (self.entities[s][row[s + "_id"]] for s in ("protein", "peptide"))
-            pair = (p["sequence"], digest({"sequence": q["sequence"], "smiles": q.get("smiles"), "map": q.get("atom_residue")}))
+            pair = (tuple(p.get('components',[p['sequence']])), digest({"sequence": q["sequence"], "smiles": q.get("smiles"), "map": q.get("atom_residue"), "chemical_identity_id":q.get('chemical_identity_id')}))
             pair_splits.setdefault(pair, set()).add(row["split"])
             if row.get("binding") is not None:
                 if row["binding"] not in (0, 1):
@@ -63,6 +65,9 @@ class Dataset:
                 path = relative_file(self.root, row["structure_labels"])
                 if not path.is_file():
                     raise ValueError(f"Missing labels: {path}")
+            for view in row.get('structure_views',[]):
+                if not relative_file(self.root,view['path']).is_file():
+                    raise ValueError('Missing structural view')
         if any(len(v) > 1 for v in pair_splits.values()):
             raise ValueError("The same chemical pair crosses partitions")
         if any(len(v) > 1 for v in cluster_splits.values()):
@@ -73,6 +78,26 @@ class Dataset:
     def split(self, name):
         return [r for r in self.pairs if r["split"] == name]
 
+    def training_rows(self, epoch, seed=17):
+        """One entry per physical pair; rotate structural observations each epoch."""
+        result=[]
+        for row in self.split('train'):
+            r=dict(row);views=r.get('structure_views',[])
+            if views:
+                offset=int(digest([r['id'],seed])[:16],16)%len(views)
+                r['structure_labels']=views[(offset+epoch)%len(views)]['path']
+            result.append(r)
+        return result
+
+    def evaluation_rows(self, name):
+        result=[]
+        for row in self.split(name):
+            views=row.get('structure_views',[])
+            if not views:result.append(dict(row,view_weight=1.0));continue
+            for i,view in enumerate(views):
+                result.append(dict(row,id=row['id']+'__view'+str(i),pair_id=row['id'],structure_labels=view['path'],view_weight=1/len(views)))
+        return result
+
     def seal(self):
         paths = {self.manifest}
         for key in ("proteins", "peptides", "pairs"):
@@ -80,6 +105,7 @@ class Dataset:
         for row in self.pairs:
             if row.get("structure_labels"):
                 paths.add(relative_file(self.root, row["structure_labels"]))
+            for view in row.get('structure_views',[]):paths.add(relative_file(self.root,view['path']))
         files = {str(p.relative_to(self.root)).replace("\\", "/"): sha256(p) for p in sorted(paths)}
         return {"schema_version": 1, "files": files, "sha256": digest(files),
                 "split_policy": self.spec.get("split_policy", "pair"),
@@ -87,6 +113,8 @@ class Dataset:
                 "cluster_method": self.spec.get("cluster_method", "not provided; homology separation not established")}
 
     def labels(self, row):
+        if not row.get('structure_labels') and row.get('structure_views'):
+            row=dict(row,structure_labels=row['structure_views'][0]['path'])
         if not row.get("structure_labels"):
             return {}
         with np.load(relative_file(self.root, row["structure_labels"]), allow_pickle=False) as z:
@@ -119,7 +147,7 @@ def collate_chain(features, side, device="cpu"):
     b, length = len(features), max(len(f["aa"]) for f in features)
     dim = features[0]["esm"].shape[-1]
     out = {"esm": torch.zeros(b, length, dim), "aa": torch.full((b, length), 20, dtype=torch.long),
-           "mask": torch.zeros(b, length, dtype=torch.bool)}
+           "mask": torch.zeros(b, length, dtype=torch.bool), "position_features":torch.zeros(b,length,3)}
     edges, atom_features, atom_edges, atom_residue, atom_weights = [], [], [], [], []
     if side == "peptide":
         c = max(len(f["conformer_mask"]) for f in features)
@@ -132,6 +160,9 @@ def collate_chain(features, side, device="cpu"):
         for key in ("esm", "aa"):
             out[key][i, :n] = torch.from_numpy(f[key])
         out["mask"][i, :n] = True
+        if 'position_features' in f:out['position_features'][i,:n]=torch.from_numpy(f['position_features'])
+        else:
+            idx=torch.arange(n);out['position_features'][i,:n]=torch.stack([idx/max(n-1,1),torch.exp(-idx/4),torch.exp(-(n-1-idx)/4)],-1)
         edges.append(torch.from_numpy(f["edges"]) + i * length)
         if side == "peptide":
             c = len(f["conformer_mask"])
@@ -156,5 +187,5 @@ def collate(dataset, rows, store, device="cpu"):
 
 
 def positive_pairs(rows):
-    # Structural records should explicitly have binding=1. Unknown pairs remain unlabeled.
-    return {(r["protein_id"], r["peptide_id"]) for r in rows if r.get("binding") == 1}
+    # Co-complex retrieval supervision is distinct from an experimental binding class.
+    return {(r["protein_id"], r["peptide_id"]) for r in rows if r.get("binding") == 1 or r.get('contrastive_positive') is True}
