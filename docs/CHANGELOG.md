@@ -2,6 +2,14 @@
 
 Every source/config/schema change must add an entry including rationale, validation and scientific impact. Detailed command logs stay in runtime; this file stays readable and in Git.
 
+## 2026-10-14 — 0.2.1 concurrent data download fix
+
+- Gave each release part its own temporary download filename. The prior suffix
+  replacement caused concurrent parts to share a name; archive roundtrip caught
+  the collision before publication. Added a two-thread roundtrip regression test.
+- Sealed observations, labels, assignments and data hashes are unchanged. Their
+  curation commit remains b7a4961; this patch changes distribution software only.
+
 ## 2026-10-14 — 0.2.0 curated dual supervision
 
 - Finalized two independently masked supervision tables, model pair records,

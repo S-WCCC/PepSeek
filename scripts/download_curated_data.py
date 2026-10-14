@@ -24,7 +24,7 @@ def main():
         if p.exists() and p.stat().st_size==part['bytes'] and digest(p)==part['sha256']:return
         for attempt in range(4):
             try:
-                tmp=p.with_suffix('.download')
+                tmp=p.with_name(p.name+'.download')
                 with urllib.request.urlopen(urllib.request.Request(base+part['file'],headers={'User-Agent':'PepSeek-data/1'}),timeout=120) as f,tmp.open('wb') as o:
                     while True:
                         b=f.read(1<<20)
