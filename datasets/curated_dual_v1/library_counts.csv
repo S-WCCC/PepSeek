@@ -1,0 +1,5 @@
+library,count,unit
+protein_sequences,33652,exact sequence
+peptide_sequences,29856,exact sequence
+protein_structures,62259,mapped atom-coordinate chain view
+peptide_structures,47870,mapped atom-coordinate chain view

@@ -3,4 +3,5 @@ scipy==1.15.3
 biopython==1.85
 gemmi==0.7.3
 rdkit==2024.9.6
+requests==2.32.5
 # External executables recorded in the search receipts: MMseqs2 and BLAST+.

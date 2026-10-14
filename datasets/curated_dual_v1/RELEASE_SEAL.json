@@ -1,0 +1,11 @@
+{
+  "version": "curated_dual_v1_20261013",
+  "status": "SEALED",
+  "code_commit": "b7a4961254722ff20863a021a0f46e992ea0517f",
+  "model_dataset_sha256": "810b4ebf8b104746be9d60b00964c72e1c0ccae67be6a1b1448d3e276e28bb9e",
+  "manifest_sha256": "eb1dbb8e0117c932a8b0c9534b321f0038dd1601e520c5b2be6601600d16a35e",
+  "files": 455525,
+  "file_bytes": 21301767232,
+  "created_utc": "2026-10-14T00:55:40Z",
+  "historical_sources_immutable": true
+}

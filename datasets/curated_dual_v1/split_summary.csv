@@ -1,0 +1,4 @@
+split,input_pairs,quantitative_observations,structural_observations,distinct_structure_views,components
+train,71081,8393,65913,65205,1
+valid,2730,195,2646,2605,548
+test,2712,189,2606,2567,547

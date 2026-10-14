@@ -1,0 +1,304 @@
+{
+  "catalog": {
+    "quantitative_observations": 8777,
+    "structure_observations": 76442,
+    "unique_pairs": 82695,
+    "unique_protein_sequences": 35121,
+    "protein_component_sets": 34875,
+    "unique_peptide_sequences": 30881,
+    "peptide_chemical_entities": 81755,
+    "verified_joint_links": 51,
+    "source_structures": {
+      "propedia26": 52273,
+      "pepbdb": 6442,
+      "PPIKB": 17727
+    },
+    "quantitative_endpoints": {
+      "IC50": 4095,
+      "Kd": 4199,
+      "Ki": 398,
+      "Km": 22,
+      "EC50": 63
+    },
+    "assets": 41208,
+    "asset_bytes": 13492646152,
+    "status": "CATALOG_ONLY_LABEL_AND_SPLIT_GATES_PENDING"
+  },
+  "clean": {
+    "status": "CLEAN_BUILT_VALIDATION_PENDING",
+    "quantitative_observations": 8777,
+    "structural_observations": 71165,
+    "input_pairs": 76523,
+    "split_counts": {
+      "train": {
+        "input_pairs": 71081,
+        "quantitative_observations": 8393,
+        "structural_observations": 65913,
+        "distinct_structure_views": 65205,
+        "protein_inputs": 29874,
+        "peptide_inputs": 48536,
+        "pairs_with_both_supervisions": 38,
+        "components": 1,
+        "endpoints": {
+          "pIC50_assay_dependent": 3950,
+          "pKd": 3977,
+          "pKi": 386,
+          "pEC50": 58,
+          "pKm": 22
+        }
+      },
+      "valid": {
+        "input_pairs": 2730,
+        "quantitative_observations": 195,
+        "structural_observations": 2646,
+        "distinct_structure_views": 2605,
+        "protein_inputs": 1766,
+        "peptide_inputs": 2097,
+        "pairs_with_both_supervisions": 0,
+        "components": 548,
+        "endpoints": {
+          "pIC50_assay_dependent": 86,
+          "pKd": 102,
+          "pKi": 3,
+          "pEC50": 4
+        }
+      },
+      "test": {
+        "input_pairs": 2712,
+        "quantitative_observations": 189,
+        "structural_observations": 2606,
+        "distinct_structure_views": 2567,
+        "protein_inputs": 1765,
+        "peptide_inputs": 2169,
+        "pairs_with_both_supervisions": 1,
+        "components": 547,
+        "endpoints": {
+          "pKd": 120,
+          "pKi": 9,
+          "pIC50_assay_dependent": 59,
+          "pEC50": 1
+        }
+      }
+    },
+    "unique_protein_sequences_clean": 33652,
+    "unique_peptide_sequences_clean": 29856,
+    "unique_protein_structures": 62259,
+    "unique_peptide_structures": 47870,
+    "duplicate_structural_views": 788,
+    "clean_holds": {
+      "No unique acceptable residue mapping": 3197,
+      "No mapped observed interface within 5 A": 1738,
+      "No mapped heavy atoms": 295,
+      "Severe interchain atom overlap": 47
+    },
+    "no_experimental_negatives_invented": true,
+    "coordinates_not_model_inputs": true,
+    "empty_structure_components_not_counted": 4
+  },
+  "split": {
+    "seed": 17,
+    "nominal_ratios": [
+      0.8,
+      0.1,
+      0.1
+    ],
+    "actual_counts": {
+      "train": 79291,
+      "valid": 2964,
+      "test": 2964
+    },
+    "components": 1125,
+    "largest_components": [
+      {
+        "component_id": "C_70514ce72a0a0d0f862ebcca",
+        "split": "train",
+        "observations": 79291,
+        "quantitative": 8393
+      },
+      {
+        "component_id": "C_672888f8a4bea8e3235080ae",
+        "split": "valid",
+        "observations": 161,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_fb671dd9cad48b9381bb584d",
+        "split": "test",
+        "observations": 137,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_9743f9dc054393a64fabd77f",
+        "split": "test",
+        "observations": 110,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_108765d011bcee12c18d5e52",
+        "split": "valid",
+        "observations": 105,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_0fe188ef2acae9c45404112f",
+        "split": "test",
+        "observations": 82,
+        "quantitative": 1
+      },
+      {
+        "component_id": "C_1305832c3964ed519bf3e4c4",
+        "split": "valid",
+        "observations": 64,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_34a1e0980e09cdd1d0ab3ab3",
+        "split": "test",
+        "observations": 59,
+        "quantitative": 3
+      },
+      {
+        "component_id": "C_b696ad470059f9ecccf4827d",
+        "split": "valid",
+        "observations": 54,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_4d08e86d0b1ee5727f26a455",
+        "split": "valid",
+        "observations": 49,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_119bfc510dce20ea76f77e0a",
+        "split": "test",
+        "observations": 45,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_7717472292fb220eabdbfd62",
+        "split": "valid",
+        "observations": 44,
+        "quantitative": 38
+      },
+      {
+        "component_id": "C_ecf9b639bc40f5b4eb80f457",
+        "split": "test",
+        "observations": 42,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_37c7d2b55e45b67fbb814486",
+        "split": "test",
+        "observations": 39,
+        "quantitative": 13
+      },
+      {
+        "component_id": "C_dcd98ba4721953d3495f6659",
+        "split": "valid",
+        "observations": 39,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_d276339702c268c703d48d72",
+        "split": "test",
+        "observations": 38,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_d582a08ecc54bc244fa9f990",
+        "split": "valid",
+        "observations": 38,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_0fed156bca7c3f795230348b",
+        "split": "test",
+        "observations": 38,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_5bc3f8de10ddd2a6bcc11f8b",
+        "split": "valid",
+        "observations": 35,
+        "quantitative": 0
+      },
+      {
+        "component_id": "C_177fbd880e10eba4819a5047",
+        "split": "valid",
+        "observations": 33,
+        "quantitative": 0
+      }
+    ],
+    "sequence_clustering": {
+      "protein": {
+        "sequences": 35121,
+        "clusters": 3000,
+        "alignment_edges": 5009261,
+        "largest_cluster": 22888,
+        "edges_sha256": "b9966c8fd3a35406dbbe7598320b6e411b05f6153ac8a2b11ae1703dcf6dabce"
+      },
+      "peptide": {
+        "sequences": 30881,
+        "clusters": 13523,
+        "alignment_edges": 96944,
+        "largest_cluster": 2535,
+        "edges_sha256": "911f115507806cbb7478077d6b00f89d3895c86268cf16b320be1d119cee9da4"
+      }
+    },
+    "grouping_operations": {
+      "protein_homology": 85495,
+      "publication_pmid": 79654,
+      "publication_doi": 81676,
+      "peptide_similarity": 71696,
+      "pair": 2524,
+      "chemical_graph": 3477,
+      "pdb": 51515,
+      "exact_mapped_contact_fingerprint": 4244,
+      "verified_joint_link": 51
+    },
+    "cross_partition_group_count": 0,
+    "policy": "dual_cold_homology_and_PDB_publication_components",
+    "historical_artifacts_modified": false,
+    "benchmark_novelty": "New version for retraining; project has prior exposure to parts of this corpus. Not a new external independent confirmation set.",
+    "label_values_used_for_split": false
+  },
+  "acceptance": {
+    "status": "PASS",
+    "counts": {
+      "input_pairs": 76523,
+      "quantitative_observations": 8777,
+      "contact_positive_labels": 9147691,
+      "contact_negative_labels": 467950173,
+      "contact_masked_labels": 98111658,
+      "protein_interface_positive_labels": 2752780,
+      "protein_interface_negative_labels": 5284279,
+      "peptide_interface_positive_labels": 1079333,
+      "peptide_interface_negative_labels": 322477,
+      "distance_observed_labels": 476527277,
+      "label_views": 70377,
+      "explicit_chemical_entities": 5340,
+      "masked_chemical_entities": 47462,
+      "source_asset_references": 41208,
+      "unique_source_asset_bytes": 13458978328,
+      "source_assets_sha_verified": 40998,
+      "protein_structures_checked": 62259,
+      "peptide_structures_checked": 47870,
+      "structure_maps_checked": 71165
+    },
+    "model_dataset_sha256": "810b4ebf8b104746be9d60b00964c72e1c0ccae67be6a1b1448d3e276e28bb9e",
+    "split_counts": {
+      "train": 71081,
+      "valid": 2730,
+      "test": 2712
+    },
+    "cross_partition_components": 0,
+    "all_source_assets_sha_checked": true,
+    "all_structure_libraries_checked": true,
+    "all_structure_maps_checked": true,
+    "all_model_labels_checked": true,
+    "all_explicit_atom_maps_checked": true,
+    "elapsed_seconds": 488.20494318008423,
+    "scientific_training_run": false
+  }
+}
