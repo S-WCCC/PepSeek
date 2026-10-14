@@ -27,16 +27,24 @@ def mapping(source,entity):
  if len(source)*len(entity)>20000000:return None
  al=PairwiseAligner(mode='global',match_score=2,mismatch_score=-3,open_gap_score=-8,extend_gap_score=-.5)
  aa=al.align(source,entity);a=aa[0]
- try:
-  if not np.array_equal(aa[1].coordinates,a.coordinates):return None
- except IndexError:pass
+ try:n_align=len(aa)
+ except OverflowError:return None
+ if n_align>128:return None
  mp=[-1]*len(entity);aligned=0;matched=0
  for (s0,s1),(e0,e1) in zip(a.aligned[0],a.aligned[1]):
   for i,j in zip(range(s0,s1),range(e0,e1)):
    aligned+=1
    if source[i]==entity[j] and source[i] in AA:mp[j]=i;matched+=1
- if aligned<min(5,len(source),len(entity)) or matched/max(1,aligned)<.95 or matched/max(1,min(len(source),len(entity)))<.8:return None
- return mp,'UNIQUE_ALIGNMENT_EXACT_RESIDUES_ONLY'
+ if aligned<min(5,len(source),len(entity)) or matched/max(1,aligned)<.95:return None
+ for alignment_index in range(1,n_align):
+  other=aa[alignment_index]
+  alternative=[-1]*len(entity)
+  for (s0,s1),(e0,e1) in zip(other.aligned[0],other.aligned[1]):
+   for i,j in zip(range(s0,s1),range(e0,e1)):
+    if source[i]==entity[j] and source[i] in AA:alternative[j]=i
+  mp=[i if alternative[j]==i else -1 for j,i in enumerate(mp)]
+ if sum(i>=0 for i in mp)/max(1,min(len(source),len(entity)))<.8:return None
+ return mp,('UNIQUE_ALIGNMENT_EXACT_RESIDUES_ONLY' if n_align==1 else 'CONSENSUS_ALL_OPTIMAL_ALIGNMENTS_EXACT_RESIDUES_ONLY')
 
 def chain_data(b):
  ep={r['entity_id']:r for r in cat(b,'_entity_poly.')};mons=collections.defaultdict(dict)
@@ -124,6 +132,15 @@ def group_maps(labs,ch,source):
   c=ch[lab]
   if not c['type'].startswith('polypeptide'):return None
   mp=mapping(s,c['sequence'])
+  if mp is None:
+   # Some structure databases store ATOM-observed sequences rather than SEQRES.
+   # Their order maps directly to declared-chain residue indices. This fallback
+   # requires full, exact agreement of the observed sequence; X only denotes a
+   # nonstandard/unknown monomer, never a wildcard for a standard mismatch.
+   observed=[i for i,a in enumerate(c['atoms']) if a]
+   if len(s)==len(observed) and all(s[j]==c['sequence'][i] or (s[j]=='X' and c['monomers'][i] not in AA3) for j,i in enumerate(observed)):
+    ix={i:j for j,i in enumerate(observed)}
+    mp=([ix.get(i,-1) for i in range(len(c['sequence']))],'EXACT_DECLARED_CHAIN_OBSERVED_RESIDUE_ORDER')
   if mp is None:return None
   result.append((lab,s,mp[0],mp[1]))
  return result

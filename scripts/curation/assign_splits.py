@@ -9,7 +9,8 @@ from pathlib import Path
 from build_catalog import loadjl,jsonl,save,digest,sha
 
 class Union:
-    def __init__(self,keys):self.p={k:k for k in keys};self.n={k:1 for k in keys}
+    def __init__(self,keys):
+        keys=list(keys);self.p={k:k for k in keys};self.n={k:1 for k in keys}
     def find(self,x):
         while x!=self.p[x]:self.p[x]=self.p[self.p[x]];x=self.p[x]
         return x

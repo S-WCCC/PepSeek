@@ -2,6 +2,13 @@
 
 ## Layout and isolation
 
+The curated-data update uses a separate versioned source directory under
+`runtime/curation/curated_dual_v1_20261013/`; it does not replace the active
+conformer-benchmark checkout at `/data/PepSeek`. Its dataset is
+`/data/PepSeek/data/curated_dual_v1_20261013`. The final deployment receipt in that
+runtime directory records the release source, environment and dataset seal.
+Use the supplied `activate_curated.sh` to select that source explicitly.
+
 Repository `/data/PepSeek`, branch `codex/unified-backbone-deployment`; origin is the user-supplied PepSeek repository. Initial upstream revision: `6602bc2938b990e0b43fa850e43191184a653708`.
 
 `.venv` is created with the system Python 3.10 interpreter and **without system site packages**. GPU PyTorch dependencies are installed inside this environment. Nothing depends on an older Model-M, PSICHIC or comparator environment. Original projects and workloads are preserved.

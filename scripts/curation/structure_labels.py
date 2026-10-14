@@ -6,7 +6,7 @@ standard heavy atoms on both residues. Incomplete/unmapped labels are masked.
 """
 import os
 os.environ.setdefault('OMP_NUM_THREADS','1');os.environ.setdefault('OPENBLAS_NUM_THREADS','1')
-import argparse,collections,concurrent.futures,gzip,json,time,traceback
+import argparse,collections,concurrent.futures,gzip,json,time,traceback,re
 from pathlib import Path
 import numpy as np,gemmi
 from scipy.spatial.distance import cdist
@@ -37,7 +37,7 @@ def pdb_chain(path):
     return result,'1'
 
 def resolve(declared,comps,ch,namespace):
-    tokens=declared.split('/')
+    tokens=[x.strip() for x in re.split(r'[,/;]+',declared) if x.strip()]
     candidates=[]
     for i,s in enumerate(comps):
         token=tokens[i] if i<len(tokens) else ''
@@ -99,7 +99,8 @@ def process_group(rows):
                 # Recovered records explicitly identify biological-assembly operators.
                 chosen=None
                 for item in r['inherited_maps']:
-                    with gzip.open(ROOT/item['path'],'rt',encoding='utf-8') as f:mpdata=json.load(f)
+                    map_source=ROOT/item['path'];opener=gzip.open if map_source.name.endswith('.gz') else open
+                    with opener(map_source,'rt',encoding='utf-8-sig') as f:mpdata=json.load(f)
                     if mpdata.get('assembly_id') and mpdata.get('protein_operator') is not None:chosen=mpdata;break
                 if chosen:
                     ops=assembly_ops(b,ch).get(str(chosen['assembly_id']),{})
@@ -138,15 +139,19 @@ def process_group(rows):
             librows=[]
             for side,data in [('protein',p),('peptide',q)]:
                 for comp in data[5]:
+                    if not len(comp['atom_residue']):continue
                     h=digest([r['coordinate_assets'],comp['chain'],comp['sequence'],tp[2] if side=='protein' else tq[2],sha(mapfile)])
                     # Content key uses exact transformed atoms and mapping, permitting source aliases.
                     import hashlib
-                    hh=hashlib.sha256(comp['coordinates'].tobytes()+comp['atom_residue'].tobytes()+comp['sequence'].encode()+comp['atom_names'].tobytes()).hexdigest()
+                    hh=hashlib.sha256(comp['coordinates'].tobytes()+comp['atom_residue'].tobytes()+comp['sequence'].encode()+comp['atom_names'].tobytes()+comp['monomers'].tobytes()+comp['observed_mask'].tobytes()+comp['complete_mask'].tobytes()).hexdigest()
                     rel=f'libraries/{side}_structures/{hh}.npz';path=ROOT/rel
-                    if not path.exists():np.savez_compressed(path,**{k:v for k,v in comp.items() if isinstance(v,np.ndarray)})
+                    if not path.exists():
+                        tmp=path.with_name(path.name+f'.{os.getpid()}.tmp.npz')
+                        np.savez_compressed(tmp,**{k:v for k,v in comp.items() if isinstance(v,np.ndarray)})
+                        os.replace(tmp,path)
                     librows.append(dict(id=side[0].upper()+'S_'+hh,side=side,path=rel,sequence=comp['sequence'],chain=comp['chain'],coordinate_sha256s=[x['sha256'] for x in r['coordinate_assets']],observation_id=r['observation_id'],map_path=mapfile.relative_to(ROOT).as_posix()))
             status.update(status='PASS',reason=None,label_path=dest.relative_to(ROOT).as_posix(),label_sha256=sha(dest),map_path=mapfile.relative_to(ROOT).as_posix(),map_sha256=sha(mapfile),protein_length=lp,peptide_length=lq,positive_contacts=int(np.sum(contact==1)),negative_contacts=int(np.sum(contact==0)),masked_contacts=int(np.isnan(contact).sum()),distance_labels=int(valid.sum()),minimum_distance_A=minimum,structure_libraries=librows,contact_fingerprint=digest([ps,qs,np.argwhere(contact==1).tolist()]))
-        except Exception as e:status.update(reason=str(e),error_type=type(e).__name__)
+        except ValueError as e:status.update(reason=str(e),error_type=type(e).__name__)
         save(receipt,status);result.append(status)
     return result
 

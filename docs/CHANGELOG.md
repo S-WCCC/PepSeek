@@ -2,6 +2,25 @@
 
 Every source/config/schema change must add an entry including rationale, validation and scientific impact. Detailed command logs stay in runtime; this file stays readable and in Git.
 
+## 2026-10-14 — 0.2.0 curated dual supervision
+
+- Finalized two independently masked supervision tables, model pair records,
+  exact sequence libraries and mapped atom-coordinate structure libraries.
+- Retained 8,777 quantitative observations and 71,165 mapped structural
+  observations; every candidate has a use/hold disposition. Four fully unobserved
+  protein components remain masked in their complexes and are not structure-library entries.
+- Executed protein MMseqs2 and peptide BLASTP-short searches, then retained entire
+  homology/PDB/publication/chemical connected components. Actual input-pair counts
+  are 71,081 train / 2,730 validation / 2,712 test; the largest component stays in
+  train. Small held-out endpoint counts are explicitly documented.
+- Recovered unambiguous residues across tied global alignments, exact observed
+  chains and comma-delimited multi-chain names; unresolved positions stay masked.
+- Corrected streaming-key union initialization and an empty-component index case,
+  preserving all preceding execution receipts. Historical datasets stay unchanged.
+- Validation: 29 model tests, seven mapping/grouping tests and the 12-step CPU
+  synthetic workflow passed. Final all-file, label and real-input acceptance is
+  recorded in the data/deployment receipts. No scientific training was launched.
+
 ## 2026-10-13 — 0.2.0rc1 dual-supervision preparation
 
 - Added reproducible two-table curation, explicit chemical atom/residue mapping,

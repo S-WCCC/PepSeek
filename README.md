@@ -44,6 +44,19 @@ python -m pip install -e '.[esm,test]'
 
 ## Train with your data
 
+The curated PPIKB + Propedia + PepBDB release provides two supervision tables,
+mapped structure labels and a fixed component-disjoint split. See
+[the dataset entry](datasets/curated_dual_v1/README.md) and
+[the methods and schema](docs/CURATED_DUAL_DATA.md).
+
+```bash
+python scripts/download_curated_data.py --output data/curated_dual_v1 --structures
+```
+
+`--structures` adds the separate mapped protein/peptide atom-coordinate libraries.
+The default download already includes all labels required by the model. Native
+complex coordinates are supervision assets, not sequence-prediction features.
+
 Prepare a `dataset.json`, entity JSONL files and pair JSONL file using [the data contract](docs/DATA_CONTRACT.md). The caller supplies fixed partitions. `audit` checks identities and declared clusters; it does not perform homology clustering.
 
 ```bash
